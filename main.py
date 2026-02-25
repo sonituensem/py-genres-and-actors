@@ -1,40 +1,34 @@
 import init_django_orm  # noqa: F401
-
 from django.db.models import QuerySet
+from db.models import Actor, Genre
+from django.db import transaction
 
-from db.models import Actor, Actress, Genre
 
 def main() -> QuerySet:
-    #Create 
+    with transaction.atomic():
+        # ---- Create or update genres ----
+        target_genres = ["Western", "Drama"]
+        for g_name in target_genres:
+            Genre.objects.update_or_create(
+                name=g_name, defaults={"name": g_name})
+        # Fix any old typo
+        Genre.objects.filter(name="Dramma").update(name="Drama")
 
-    Genre.objects.bulk_create([
-        Genre(Name="Action"),
-        Genre(Name="Comedy"),
-        Genre(Name="Dramma"),
-    ])
-
-    Actor.objects.bulk_create([
-        Actor(first_name="George, last_name = ""),
-        Actor(first_name="Kianu" last_name="Reaves"),
-        Actor(first_name="Will", last_name="Smith")
-    ])
-
-    Actress.objects.bulk_create([
-        Actress(first_name="Scarlett", last_name="Keegan"),
-        Actress(first_name="Scarlett", last_name="Johansson")
-    ])
-
-    #Update
-
-    Genre.objects.filter(Name="Dramma").update(Name="Drama")
-    Actor.objects.filter(first_name="George").update(last_name="Clooney")
-    Actor.objects.filter(first_name="Kianu").update(first_name="Keanu", last_name="Reeves")
-
-
-    #Delete
-    Genre.objects.filter(Name="Action").delete()
-    Actress.objects.filter(first_name="Scarlett").delete()
-
-    #Return
-    smith_actors: QuerySet = Actor.objects.filter(last_name="Smith").order_by("first_name")
-    return smith_actors
+        # ---- Create or update actors ----
+        target_actors = [
+            ("George", "Clooney"),
+            ("Keanu", "Reeves"),
+            ("Will", "Smith"),
+            ("Jaden", "Smith"),
+        ]
+        for first, last in target_actors:
+            Actor.objects.update_or_create(
+                first_name=first,
+                last_name=last,
+                defaults={"first_name": first, "last_name": last},
+            )
+        # ---- Return actors with last name "Smith", ordered by first name ----
+        smith_actors: QuerySet = Actor.objects.filter(
+            last_name="Smith"
+        ).order_by("first_name")
+        return smith_actors
